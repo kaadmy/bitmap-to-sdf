@@ -33,7 +33,7 @@ import math
 import PIL.Image
 
 # Distance (in pixels) at which point the distance field completely falls off.
-SDF_RADIUS = 8
+SDF_RADIUS = 5
 
 def generate(path_in, path_out):
     # Open source image to read data from.
@@ -60,7 +60,14 @@ def generate(path_in, path_out):
     # as the source image.
     destination_image = PIL.Image.new(mode='L', size=source_image.size)
 
+    pixels_total = source_image.width * source_image.height
+    pixels_so_far = 0
+
     for x in range(source_image.width):
+        pixels_so_far += source_image.width
+        pixels_percent = int((pixels_so_far / pixels_total) * 100)
+        print(f"{pixels_percent}% complete")
+
         for y in range(source_image.height):
             point = (x, y)
 
