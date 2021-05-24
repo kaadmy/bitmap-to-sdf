@@ -1,0 +1,77 @@
+#! /usr/bin/python3
+
+# ========================================
+# bitmap-to-sdf
+#
+# Usage: bitmap-to-sdf IMAGE-IN IMAGE-OUT
+# ========================================
+
+# ========================================
+# Copyright © 2021 kaadmy
+#
+# Permission is hereby granted, free of charge, to any person obtaining
+# a copy of this software and associated documentation files (the
+# “Software”), to deal in the Software without restriction, including
+# without limitation the rights to use, copy, modify, merge, publish,
+# distribute, sublicense, and/or sell copies of the Software, and to
+# permit persons to whom the Software is furnished to do so, subject to
+# the following conditions:
+#
+# The above copyright notice and this permission notice shall be
+# included in all copies or substantial portions of the Software.
+#
+# THE SOFTWARE IS PROVIDED “AS IS”, WITHOUT WARRANTY OF ANY KIND,
+# EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+# MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+# NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE
+# LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
+# OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
+# WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+# ========================================
+
+import math
+import PIL.Image
+
+# Distance (in pixels) at which point the distance field completely falls off.
+SDF_RADIUS = 8
+
+def generate(path_in, path_out):
+    # Open source image to read data from.
+    source_image = PIL.Image.open(path_in).convert(mode='1')
+
+    # Find the nearest requested pixel in the source image.
+    #
+    # If `inside` is `True`, then search for a black pixel. Otherwise,
+    # search for a white pixel.
+    def distance(point, inside):
+        min_dist = 10000.0
+
+        for x in range(max(0, point[0] - SDF_RADIUS), min(source_image.width, point[0] + SDF_RADIUS)):
+            for y in range(max(0, point[1] - SDF_RADIUS), min(source_image.height, point[1] + SDF_RADIUS)):
+                if bool(source_image.getpixel((x, y))) != inside:
+                    delta_x = x - point[0]
+                    delta_y = y - point[1]
+
+                    min_dist = min(min_dist, math.sqrt(delta_x * delta_x + delta_y * delta_y))
+
+        return (-min_dist + 1) if inside else min_dist
+
+    # Create 8-bit grayscale destination image which is the same size
+    # as the source image.
+    destination_image = PIL.Image.new(mode='L', size=source_image.size)
+
+    for x in range(source_image.width):
+        for y in range(source_image.height):
+            point = (x, y)
+
+            dist = distance(point, bool(source_image.getpixel(point)))
+            dist = 255 - min(int((dist / SDF_RADIUS) * 127 + 127), 255)
+
+            destination_image.putpixel(point, dist)
+
+    # Write out destination image.
+    destination_image.save(path_out)
+
+if __name__ == "__main__":
+    import sys
+    generate(sys.argv[1], sys.argv[2])
